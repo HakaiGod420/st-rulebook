@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Rulebook — harness</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <link rel="stylesheet" href="mirror/scripts/extensions/third-party/st-rulebook/style.css">
+    <style>
+        :root {
+            --SmartThemeBodyColor: rgba(255, 255, 255, 0.9);
+            --SmartThemeEmColor: #b9a9ff;
+            --SmartThemeQuoteColor: #9ec9ff;
+            --SmartThemeUnderlineColor: rgba(255, 255, 255, 0.5);
+            --SmartThemeBorderColor: rgba(255, 255, 255, 0.22);
+            --SmartThemeBlurTintColor: rgba(19, 21, 27, 0.95);
+            --SmartThemeBlurStrength: 10px;
+            --SmartThemeShadowColor: rgba(0, 0, 0, 0.45);
+            --mainFontSize: 15px;
+            --mainFontFamily: "Segoe UI", system-ui, -apple-system, sans-serif;
+        }
+
+        html,
+        body {
+            margin: 0;
+            min-height: 100%;
+            background-color: #0c0d11;
+            background: radial-gradient(120% 80% at 70% 0%, #1d2331 0%, #12141a 55%, #0c0d11 100%);
+            color: var(--SmartThemeBodyColor);
+            font-family: var(--mainFontFamily);
+            font-size: var(--mainFontSize);
+        }
+
+        #topbar {
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+            background: rgba(12, 13, 17, 0.72);
+            backdrop-filter: blur(12px);
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        #topbar .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #68c98b;
+        }
+
+        #chat {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 26px 22px 160px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .mes {
+            position: relative;
+            display: flex;
+            gap: 11px;
+            padding: 12px 13px;
+            border-radius: 13px;
+            background: rgba(255, 255, 255, 0.028);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            line-height: 1.6;
+        }
+
+        .mes[is_user="true"] {
+            background: rgba(158, 201, 255, 0.055);
+            border-color: rgba(158, 201, 255, 0.12);
+        }
+
+        .mes_avatar {
+            flex: 0 0 auto;
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            border-radius: 9px;
+            background: rgba(158, 201, 255, 0.16);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .mes_block {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mes_name {
+            font-size: 10.5px;
+            letter-spacing: 0.13em;
+            text-transform: uppercase;
+            opacity: 0.45;
+            margin-bottom: 3px;
+        }
+
+        .mes_text {
+            font-size: 14.5px;
+            white-space: pre-wrap;
+        }
+
+        #send_form {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 30;
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 64px;
+            padding: 10px 16px;
+            box-sizing: border-box;
+            background: rgba(13, 14, 19, 0.96);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        #send_textarea {
+            flex: 1;
+            height: 42px;
+            resize: none;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: inherit;
+            font: inherit;
+            padding: 10px 12px;
+        }
+
+        #send_but {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 10px;
+            background: rgba(158, 201, 255, 0.18);
+            color: inherit;
+        }
+
+        /* --- SillyTavern shell pieces the extension relies on --- */
+
+        dialog.popup {
+            position: fixed;
+            inset: 0;
+            margin: auto;
+            border: none;
+            padding: 0;
+            background: transparent;
+            color: var(--SmartThemeBodyColor);
+            font-family: var(--mainFontFamily);
+            display: flex;
+            flex-direction: column;
+            width: max-content;
+            max-width: 96vw;
+            max-height: 94vh;
+        }
+
+        dialog.popup::backdrop {
+            background: rgba(0, 0, 0, 0.62);
+            backdrop-filter: blur(2px);
+        }
+
+        .popup-body {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            position: relative;
+        }
+
+        .popup-content {
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .popup-controls {
+            display: none;
+        }
+
+        .popup-button-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            opacity: 0.55;
+            border-radius: 8px;
+            z-index: 5;
+        }
+
+        .menu_button {
+            cursor: pointer;
+        }
+
+        #extensions_settings {
+            position: fixed;
+            left: 14px;
+            top: 64px;
+            width: 300px;
+            z-index: 40;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(16, 18, 23, 0.94);
+            backdrop-filter: blur(8px);
+            font-size: 13px;
+        }
+
+        #extensions_settings .inline-drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        #extensions_settings .checkbox_label {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin: 6px 0;
+        }
+
+        #rb-open {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            margin-top: 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        #extensionsMenu {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 4px;
+            width: 200px;
+            border: 1px solid var(--SmartThemeBorderColor);
+            border-radius: 10px;
+            background: var(--SmartThemeBlurTintColor);
+            position: fixed;
+            left: 14px;
+            bottom: 74px;
+            z-index: 50;
+        }
+
+        #extensionsMenu > div {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 6px;
+            border-radius: 7px;
+            cursor: pointer;
+            opacity: 0.7;
+            font-size: 12px;
+        }
+
+        #extensionsMenu > div:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .extensionsMenuExtensionButton {
+            width: 18px;
+            display: grid;
+            place-items: center;
+            font-size: 12px;
+        }
+
+        /* --- dev chrome --- */
+
+        #devbar {
+            position: fixed;
+            right: 14px;
+            top: 56px;
+            z-index: 60;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-width: 420px;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(8, 9, 12, 0.86);
+            backdrop-filter: blur(10px);
+        }
+
+        #devbar button {
+            font: inherit;
+            font-size: 11.5px;
+            padding: 6px 9px;
+            border-radius: 7px;
+            border: 1px solid rgba(255, 255, 255, 0.16);
+            background: rgba(255, 255, 255, 0.05);
+            color: inherit;
+            cursor: pointer;
+        }
+
+        #devbar .readout {
+            align-self: center;
+            font-size: 11px;
+            opacity: 0.5;
+            font-variant-numeric: tabular-nums;
+        }
+
+        #toasts {
+            position: fixed;
+            left: 14px;
+            bottom: 14px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start;
+        }
+
+        .toast {
+            max-width: 320px;
+            padding: 9px 13px;
+            border-radius: 9px;
+            font-size: 12.5px;
+            background: rgba(20, 22, 28, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+
+        .toast.error {
+            border-color: rgba(224, 87, 91, 0.6);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="topbar"><span class="dot"></span> Kisa · harness chat</div>
+
+    <div id="chat">
+        <div class="mes" mesid="0" is_user="false">
+            <div class="mes_avatar">K</div>
+            <div class="mes_block">
+                <div class="mes_name">Kisa</div>
+                <div class="mes_text">*The train is late and the platform lights are buzzing.*
+
+Kisa is sitting on the bench with her knees pulled up, scrunchie around her wrist. "You took your time," she says, without looking up.</div>
+            </div>
+        </div>
+        <div class="mes" mesid="1" is_user="true">
+            <div class="mes_avatar">Kai</div>
+            <div class="mes_block">
+                <div class="mes_name">Kai</div>
+                <div class="mes_text">"The bus broke down," I say, dropping onto the bench beside her.</div>
+            </div>
+        </div>
+        <div class="mes" mesid="2" is_user="false">
+            <div class="mes_avatar">K</div>
+            <div class="mes_block">
+                <div class="mes_name">Kisa</div>
+                <div class="mes_text">She pulls a transit card out of her shorts pocket and flicks it at me. "I have two rides left on this. You owe me one."</div>
+            </div>
+        </div>
+    </div>
+
+    <form id="send_form" onsubmit="return false">
+        <textarea id="send_textarea" placeholder="Type a message…"></textarea>
+        <div id="send_but"><i class="fa-solid fa-paper-plane"></i></div>
+    </form>
+
+    <div id="extensions_settings"></div>
+
+    <div id="devbar">
+        <button data-dev="open">Open rulebook</button>
+        <button data-dev="wand">Wand menu</button>
+        <button data-dev="fail">Fail next AI</button>
+        <button data-dev="abort">Abort next AI</button>
+        <button data-dev="light">Light theme</button>
+        <span class="readout" id="readout"></span>
+    </div>
+    <div id="toasts"></div>
+
+    <script>
+        window.toastr = {
+            _add(text, className) {
+                const el = document.createElement('div');
+                el.className = `toast ${className}`;
+                el.textContent = String(text ?? '');
+                document.getElementById('toasts').append(el);
+                setTimeout(() => el.remove(), 5200);
+            },
+            info(text) { this._add(text, 'info'); },
+            success(text) { this._add(text, 'success'); },
+            warning(text) { this._add(text, 'warning'); },
+            error(text) { this._add(text, 'error'); },
+        };
+
+        window.__errors = [];
+        window.addEventListener('error', event => window.__errors.push(String(event.message)));
+        window.addEventListener('unhandledrejection', event => window.__errors.push(String(event.reason)));
+
+        window.jQuery = function (callback) {
+            Promise.resolve().then(callback);
+            return { append() { }, on() { } };
+        };
+        window.$ = window.jQuery;
+
+        // ST injects the wand menu after extensions load.
+        setTimeout(() => {
+            const menu = document.createElement('div');
+            menu.id = 'extensionsMenu';
+            menu.innerHTML = '<div><div class="extensionsMenuExtensionButton fa-solid fa-paperclip"></div><span>Attach File</span></div>';
+            document.body.append(menu);
+        }, 300);
+    </script>
+
+    <script type="module">
+        import './mirror/scripts/extensions/third-party/st-rulebook/index.js';
+        import { getContext, resetChatMetadata, eventSource, eventTypes } from './mirror/scripts/extensions.js';
+
+        function rect(selector) {
+            const el = document.querySelector(selector);
+            if (!el) {
+                return null;
+            }
+            const box = el.getBoundingClientRect();
+            return { top: Math.round(box.top), bottom: Math.round(box.bottom), left: Math.round(box.left), right: Math.round(box.right), width: Math.round(box.width), height: Math.round(box.height) };
+        }
+
+        window.H = {
+            openModal() {
+                document.getElementById('rb-open')?.click();
+            },
+            closeModal() {
+                window.__popupOpen?.complete?.(1);
+            },
+            wandMenu() {
+                document.getElementById('rb-wand')?.click();
+            },
+            state() {
+                return {
+                    popups: window.__popups ?? 0,
+                    injections: window.__injections?.length ?? 0,
+                    last: window.__injection ? { position: window.__injection.position, depth: window.__injection.depth, len: String(window.__injection.value ?? '').length } : null,
+                    text: String(window.__injection?.value ?? ''),
+                    calls: window.__calls ?? 0,
+                    metaSaves: window.__metaSaves ?? 0,
+                    confirmCalls: window.__confirmCalls ?? 0,
+                    errors: window.__errors,
+                    hud: rect('.rb-hud'),
+                    sendForm: rect('#send_form'),
+                    modal: rect('.rb-modal'),
+                    popup: rect('dialog.popup'),
+                    overflowX: (() => {
+                        const root = document.querySelector('.rb-modal');
+                        return root ? root.scrollWidth - root.clientWidth : null;
+                    })(),
+                };
+            },
+            async setChat() {
+                resetChatMetadata();
+                eventSource.emit(eventTypes.CHAT_CHANGED);
+            },
+            meta() {
+                return JSON.parse(JSON.stringify(getContext().chatMetadata));
+            },
+        };
+
+        document.getElementById('devbar').addEventListener('click', event => {
+            const button = event.target.closest('[data-dev]');
+            if (!button) {
+                return;
+            }
+            switch (button.dataset.dev) {
+                case 'open': window.H.openModal(); break;
+                case 'wand': window.H.wandMenu(); break;
+                case 'fail': window.__failNext = true; break;
+                case 'abort': window.__abortNext = true; break;
+                case 'light': {
+                    const root = document.documentElement.style;
+                    const light = root.getPropertyValue('--SmartThemeBodyColor') === 'rgba(28, 30, 36, 0.92)';
+                    root.setProperty('--SmartThemeBodyColor', light ? 'rgba(255, 255, 255, 0.9)' : 'rgba(28, 30, 36, 0.92)');
+                    root.setProperty('--SmartThemeBlurTintColor', light ? 'rgba(19, 21, 27, 0.95)' : 'rgba(250, 249, 245, 0.97)');
+                    root.setProperty('--SmartThemeBorderColor', light ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.2)');
+                    root.setProperty('--SmartThemeQuoteColor', light ? '#9ec9ff' : '#2f6fb3');
+                    root.setProperty('--SmartThemeEmColor', light ? '#b9a9ff' : '#6d5bd0');
+                    document.body.style.background = light
+                        ? 'radial-gradient(120% 80% at 70% 0%, #1d2331 0%, #12141a 55%, #0c0d11 100%)'
+                        : 'radial-gradient(120% 80% at 70% 0%, #f2f1ec 0%, #e9e8e3 55%, #dedcd6 100%)';
+                    break;
+                }
+            }
+        });
+
+        setInterval(() => {
+            const readout = document.getElementById('readout');
+            readout.textContent = `inj ${window.__injections?.length ?? 0} · ai ${window.__calls ?? 0} · pop ${window.__popups ?? 0}`;
+        }, 400);
+    </script>
+</body>
+
+</html>
