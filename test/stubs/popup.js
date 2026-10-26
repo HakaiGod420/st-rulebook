@@ -11,7 +11,7 @@ export class Popup {
         this.dlg.innerHTML = `
             <div class="popup-body">
                 <div class="popup-content"></div>
-                <div class="popup-controls"></div>
+                <div class="popup-controls"><div class="menu_button">OK</div></div>
             </div>
             <div class="popup-button-close fa-solid fa-xmark" role="button" aria-label="Close"></div>`;
         this.content = this.dlg.querySelector('.popup-content');

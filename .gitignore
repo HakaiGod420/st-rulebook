@@ -2,3 +2,4 @@ test/mirror/
 test/server.log
 test/server.err
 test/last_post.jsonl
+tmp-recon/

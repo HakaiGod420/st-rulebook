@@ -160,9 +160,10 @@
             font-family: var(--mainFontFamily);
             display: flex;
             flex-direction: column;
-            width: max-content;
-            max-width: 96vw;
-            max-height: 94vh;
+            width: auto;
+            max-width: calc(100% - 10%);
+            max-height: calc(100vh - 20%);
+            text-align: center;
         }
 
         dialog.popup::backdrop {
@@ -170,6 +171,7 @@
             backdrop-filter: blur(2px);
         }
 
+        /* Mirrors ST 1.19: block content box, centred text, padding, own controls. */
         .popup-body {
             display: flex;
             flex-direction: column;
@@ -179,14 +181,25 @@
         }
 
         .popup-content {
-            flex: 1;
+            flex: 1 1 auto;
             min-height: 0;
-            overflow: hidden;
-            display: flex;
+            overflow: hidden auto;
+            display: block;
+            padding: 1em;
+            text-align: center;
         }
 
         .popup-controls {
-            display: none;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 8px 10px;
+        }
+
+        .popup-controls .menu_button {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .popup-button-close {
@@ -226,6 +239,13 @@
             align-items: center;
             justify-content: space-between;
             cursor: pointer;
+        }
+
+        /* ST hides drawer content until its delegated toggle runs. The harness
+           mirrors that, so a panel without the .inline-drawer wrapper fails here
+           exactly as it fails in the real app. */
+        #extensions_settings .inline-drawer-content {
+            display: none;
         }
 
         #extensions_settings .checkbox_label {
@@ -424,6 +444,25 @@ Kisa is sitting on the bench with her knees pulled up, scrunchie around her wris
             menu.innerHTML = '<div><div class="extensionsMenuExtensionButton fa-solid fa-paperclip"></div><span>Attach File</span></div>';
             document.body.append(menu);
         }, 300);
+
+        // And binds drawer toggles by delegation on .inline-drawer-toggle, reading
+        // closest('.inline-drawer'). Same contract as the real app.
+        document.addEventListener('click', event => {
+            const toggle = event.target.closest('.inline-drawer-toggle');
+            if (!toggle || event.target.classList.contains('text_pole')) {
+                return;
+            }
+            const drawer = toggle.closest('.inline-drawer');
+            if (!drawer) {
+                return;
+            }
+            const content = drawer.querySelector(':scope > .inline-drawer-content');
+            const icon = drawer.querySelector(':scope > .inline-drawer-header .inline-drawer-icon');
+            icon?.classList.toggle('down');
+            if (content) {
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            }
+        });
     </script>
 
     <script type="module">

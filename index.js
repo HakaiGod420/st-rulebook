@@ -206,20 +206,42 @@ function injectView(view) {
 
 /* ---------------------------------------------------------------------- HUD */
 
+let hudObserver = null;
+
+/**
+ * The HUD sits above the message box, whose height changes the moment a long
+ * message is typed. Watch it instead of measuring once, or the chip ends up
+ * underneath the textarea.
+ */
+function placeHud() {
+    if (!hud) {
+        return;
+    }
+    const sendForm = document.getElementById('send_form');
+    const height = sendForm?.getBoundingClientRect().height || 0;
+    hud.style.setProperty('--rb-hud-bottom', `${Math.round(height + 12)}px`);
+}
+
 function mountHud(view) {
     hud?.remove();
     hud = null;
+    hudObserver?.disconnect();
+    hudObserver = null;
 
     const element = buildHud({ view, dispatch });
     if (!element) {
         return;
     }
 
-    const sendForm = document.getElementById('send_form');
-    const height = sendForm?.getBoundingClientRect().height || 0;
-    element.style.setProperty('--rb-hud-bottom', `${Math.round(height + 10)}px`);
     document.body.append(element);
     hud = element;
+    placeHud();
+
+    const sendForm = document.getElementById('send_form');
+    if (typeof ResizeObserver === 'function' && sendForm) {
+        hudObserver = new ResizeObserver(() => placeHud());
+        hudObserver.observe(sendForm);
+    }
 }
 
 /* -------------------------------------------------------------------- modal */
@@ -713,6 +735,21 @@ function wireSettingsPanel() {
     const master = document.getElementById('rb-master');
     const hudToggle = document.getElementById('rb-hud-toggle');
     const open = document.getElementById('rb-open');
+
+    // ST toggles drawers through a delegated handler on '.inline-drawer-toggle'
+    // that reads `closest('.inline-drawer')` — settings.html carries that wrapper.
+    // If a future ST build changes the contract, drive the content ourselves
+    // rather than leaving a header that does nothing.
+    const panel = document.getElementById('rb-settings');
+    const header = panel?.querySelector('.inline-drawer-header');
+    const drawerContent = panel?.querySelector('.inline-drawer-content');
+    if (header && drawerContent && !panel.querySelector('.inline-drawer')) {
+        header.addEventListener('click', () => {
+            const openState = drawerContent.style.display !== 'block';
+            drawerContent.style.display = openState ? 'block' : 'none';
+            header.querySelector('.inline-drawer-icon')?.classList.toggle('down', !openState);
+        });
+    }
 
     if (master) {
         master.checked = settings.inject.enabled;

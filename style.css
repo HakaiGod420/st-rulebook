@@ -27,6 +27,8 @@
     font-family: var(--rb-font);
     font-size: calc(var(--mainFontSize, 15px) * 0.94);
     line-height: 1.45;
+    /* ST centres its popups; every list, field and preview here is left-aligned. */
+    text-align: left;
     box-sizing: border-box;
 }
 
@@ -48,24 +50,60 @@
 
 /* ------------------------------------------------------------------- modal */
 
+/* --------------------------------------------------------------- the ST shell
+   SillyTavern wraps custom popup content in its own TEXT dialog: a ~600px content
+   box, `text-align: center`, its own OK button and a height driven by content —
+   which collapses a flex-column panel to one visible row. Every one of those has
+   to be taken back explicitly, or the panel looks broken inside real ST while the
+   harness (whose stub is friendlier) passes. */
+
+/* Specificity, not source order: ST's own `dialog.popup` rules are a tie for a
+   bare `dialog.rb-dialog`, and whoever loads last wins — which is not something an
+   extension should depend on. */
+dialog.popup.rb-dialog {
+    width: min(900px, 92vw);
+    height: min(82vh, 880px);
+}
+
+dialog.popup.rb-dialog .popup-body {
+    min-height: 0;
+}
+
+dialog.popup.rb-dialog .popup-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+    text-align: left;
+}
+
+dialog.popup.rb-dialog .popup-controls {
+    display: none;
+}
+
+/* ST draws its own close button for TEXT popups inside the dialog box; ours lives
+   in the header. Exactly one X may exist, or the screenshots lie about the UI. */
+dialog.popup.rb-dialog .popup-button-close {
+    display: none !important;
+}
+
 .rb-popup {
     display: flex;
+    flex: 1 1 auto;
     min-height: 0;
     height: 100%;
     width: 100%;
 }
 
-/* ST draws its own close button for TEXT popups inside the dialog box; ours lives
-   in the header. Exactly one X may exist, or the screenshots lie about the UI. */
-dialog.rb-dialog .popup-button-close {
-    display: none !important;
-}
-
 .rb-root.rb-modal {
     display: flex;
     flex-direction: column;
-    width: min(900px, 92vw);
-    max-height: min(82vh, 880px);
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: 900px;
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
     overflow: hidden;
     border-radius: 14px;
@@ -1036,9 +1074,14 @@ dialog.rb-dialog .popup-button-close {
 /* --------------------------------------------------------------- small screen */
 
 @media (max-width: 720px) {
+    dialog.popup.rb-dialog {
+        width: 100%;
+        height: 88vh;
+    }
+
     .rb-root.rb-modal {
         width: 100%;
-        max-height: min(88vh, 100%);
+        max-width: none;
         border-radius: 12px;
     }
 
