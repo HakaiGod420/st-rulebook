@@ -688,9 +688,22 @@ dialog.popup.rb-dialog .popup-button-close {
 
 .rb-grid3 {
     display: grid;
-    grid-template-columns: 1fr 96px 1fr;
+    grid-template-columns: minmax(0, 1fr) 96px 132px;
+    align-items: end;
     gap: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
+}
+
+.rb-grid3 .rb-field {
+    margin: 0;
+}
+
+.rb-field.is-off .rb-input {
+    opacity: 0.45;
+}
+
+.rb-field.is-off .rb-label {
+    opacity: 0.55;
 }
 
 .rb-editor-foot {
@@ -1166,7 +1179,7 @@ dialog.popup.rb-dialog .popup-button-close {
 /* Users scale --mainFontSize; keep the panel readable at 19px without overflow. */
 @media (min-width: 721px) and (max-width: 900px) {
     .rb-grid3 {
-        grid-template-columns: 1fr 88px;
+        grid-template-columns: minmax(0, 1fr) 84px;
     }
 
     .rb-grid3 > :last-child {

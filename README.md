@@ -167,8 +167,15 @@ Names match exactly first, then by substring, so `/rule instant` finds *Instant 
 | drafting, splitting, remixing rules | `generateRaw` | the prompts are self-contained: a quiet prompt would build on the **open card**, leaking one character's details into a rule you intend to reuse everywhere |
 
 Both the request and the reply are plain text — the model is asked for a JSON array between `<<<RULES>>>` and
-`<<<END>>>`, and the parser tolerates a code fence, a wrapper object, a bare array, or a plain bullet list. A model
-that answers in prose gets a readable error instead of silently adding nothing.
+`<<<END>>>`, and the parser tolerates a code fence, a wrapper object, a bare array, a plain bullet list, a missing
+closing sentinel and a stray tool tag after the array. A model that answers in prose gets a readable error instead of
+silently adding nothing.
+
+One detail worth knowing: `generateRaw` runs SillyTavern's `substituteParams` over every message
+(`createRawPrompt`, `script.js:3945`), so a literal `{{char}}` inside an instruction reaches the model **already
+resolved** to the open card's name. The prompts therefore write `[[CHAR]]` and `[[USER]]`, which survive substitution,
+and the parser swaps them — plus any real name the model used anyway — back to `{{char}}` / `{{user}}` before you ever
+see a rule.
 
 ## What it deliberately does not do
 

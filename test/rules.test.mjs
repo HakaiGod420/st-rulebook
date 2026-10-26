@@ -20,7 +20,7 @@ import {
     tokenEstimate,
     withEffective,
 } from '../src/rules.js';
-import { RulebookParseError, parseRulesResponse, buildAuthorPrompt, buildAtomizePrompt } from '../src/generate.js';
+import { RulebookParseError, buildAuthorPrompt, buildAtomizePrompt, parseRulesResponse, protectMacros, restoreTokens, tokeniseNames } from '../src/generate.js';
 
 let passed = 0;
 const failures = [];
@@ -277,6 +277,59 @@ test('parseRulesResponse throws a readable error on prose', () => {
     assert.throws(() => parseRulesResponse(''), RulebookParseError);
 });
 
+test('parseRulesResponse survives a missing closing sentinel and a trailing tool tag', () => {
+    // The exact shape a MiMo/chat-completion model returned in the wild.
+    const raw = '<<<RULES>>>\n[{"label":"No negative reaction","text":"{{char}} never judges {{user}}.","category":"conflict","strength":"hard","group":"negative reactions","stance":"none","tags":["judgment"]},{"label":"Submission world rule","text":"The world runs on submission.","category":"world","strength":"hard"}]\n</parameter>';
+    const rules = parseRulesResponse(raw);
+    assert.equal(rules.length, 2);
+    assert.equal(rules[0].label, 'No negative reaction');
+    assert.equal(rules[1].category, 'world');
+});
+
+test('parseRulesResponse ignores an unbalanced tail inside the sentinel', () => {
+    const raw = '<<<RULES>>>\n[{"text":"keep replies short"}]\n</invoke>\nsome trailing note with a stray } brace';
+    const rules = parseRulesResponse(raw);
+    assert.equal(rules.length, 1);
+    assert.equal(rules[0].text, 'keep replies short');
+});
+
+/* --------------------------------------------------- macros and model names */
+
+test('protectMacros keeps {{char}}/{{user}} out of the prompt ST will substitute', () => {
+    const protectedText = protectMacros('{{char}} cannot think {{user}} does anything bad');
+    assert.equal(protectedText, '[[CHAR]] cannot think [[USER]] does anything bad');
+    assert.ok(!protectedText.includes('{{'));
+});
+
+test('author prompts carry no raw {{char}} the runtime could resolve', () => {
+    const prompt = buildAuthorPrompt({ description: '{{char}} falls for {{user}} instantly', count: 3 });
+    assert.ok(!prompt.includes('{{char}}'), 'no {{char}} may survive into the request');
+    assert.ok(!prompt.includes('{{user}}'), 'no {{user}} may survive into the request');
+    assert.ok(prompt.includes('[[CHAR]]'));
+    assert.ok(prompt.includes('[[USER]]'));
+});
+
+test('restoreTokens turns the placeholders back into macros', () => {
+    assert.equal(restoreTokens('[[CHAR]] looks at [[USER]]'), '{{char}} looks at {{user}}');
+    assert.equal(restoreTokens('[[ char ]] and [[user]]'), '{{char}} and {{user}}');
+});
+
+test('tokeniseNames maps the names a model wrote back onto macros', () => {
+    const out = tokeniseNames('SillyTavern System never judges Jack.', { charName: 'SillyTavern System', userName: 'Jack' });
+    assert.equal(out, '{{char}} never judges {{user}}.');
+});
+
+test('tokeniseNames does not eat words that merely contain the name', () => {
+    const out = tokeniseNames('Jackeline wears a jacket, Jack agrees.', { charName: 'Kisa', userName: 'Jack' });
+    assert.equal(out, 'Jackeline wears a jacket, {{user}} agrees.');
+});
+
+test('parsed candidates come back with macros even when the model used names', () => {
+    const raw = '[{"label":"x","text":"SillyTavern System never reacts negatively to Jack."}]';
+    const rules = parseRulesResponse(raw, { charName: 'SillyTavern System', userName: 'Jack' });
+    assert.equal(rules[0].text, '{{char}} never reacts negatively to {{user}}.');
+});
+
 test('parseRulesResponse mints a label when the model omits one', () => {
     const rules = parseRulesResponse('[{"text":"Never write the user\\u0027s dialogue for them"}]');
     assert.ok(rules[0].label.length > 0);
@@ -294,7 +347,8 @@ test('author and atomize prompts ask for the sentinel and the macro tokens', () 
 
     const atomize = buildAtomizePrompt({ blob: 'some text', count: 5 });
     assert.ok(atomize.includes('at most 5 rules'));
-    assert.ok(atomize.includes('{{char}}'));
+    assert.ok(atomize.includes('[[CHAR]]'), 'placeholders, not macros ST would resolve');
+    assert.ok(!atomize.includes('{{char}}'));
 });
 
 /* -------------------------------------------------------------------- report */

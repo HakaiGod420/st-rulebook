@@ -442,6 +442,7 @@ export function buildModal({ getView, dispatch }) {
 
     function composeView(view) {
         const percent = view.contextMax > 0 ? Math.min(100, Math.round((view.tokens / view.contextMax) * 1000) / 10) : null;
+        const inChat = view.inject.position === 'in_chat';
         const conflicts = view.conflicts.length
             ? view.conflicts.map(entry => `
                 <div class="rb-conflict">
@@ -476,19 +477,20 @@ export function buildModal({ getView, dispatch }) {
                             <option value="before_prompt"${view.inject.position === 'before_prompt' ? ' selected' : ''}>Before main prompt</option>
                         </select>
                     </label>
-                    <label class="rb-field">
-                        <span class="rb-label">Depth <em>in chat only</em></span>
-                        <input type="number" class="rb-input" data-field="depth" min="0" max="20" value="${view.inject.depth}">
+                    <label class="rb-field${inChat ? '' : ' is-off'}">
+                        <span class="rb-label">Depth</span>
+                        <input type="number" class="rb-input" data-field="depth" min="0" max="20" value="${view.inject.depth}" ${inChat ? '' : 'disabled'}>
                     </label>
-                    <label class="rb-field">
+                    <label class="rb-field${inChat ? '' : ' is-off'}">
                         <span class="rb-label">Role</span>
-                        <select class="rb-input" data-field="role">
+                        <select class="rb-input" data-field="role" ${inChat ? '' : 'disabled'}>
                             <option value="0"${Number(view.inject.role) === 0 ? ' selected' : ''}>System</option>
                             <option value="1"${Number(view.inject.role) === 1 ? ' selected' : ''}>User</option>
                             <option value="2"${Number(view.inject.role) === 2 ? ' selected' : ''}>Assistant</option>
                         </select>
                     </label>
                 </div>
+                <p class="rb-hint">Rules belong in the <strong>main prompt</strong> with the <strong>system</strong> role: the block is static, so keeping it in the prefix keeps the prompt cache warm, and the model reads it as instruction rather than as something a character said. <strong>Depth</strong> only applies to <em>In chat</em> — it counts messages back from the end; <strong>role</strong> is the message role the block is inserted as. Some backends reject a system message mid-conversation, which is when <em>User</em> is the right answer.</p>
                 <label class="rb-field">
                     <span class="rb-label">Template <em>{{rules}} is where the rules land</em></span>
                     <textarea class="rb-input rb-textarea rb-mono" data-ref="template" data-fkey="template" rows="4">${esc(view.inject.template)}</textarea>

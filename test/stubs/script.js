@@ -17,6 +17,23 @@ export function setExtensionPrompt(key, value, position, depth, scan = false, ro
     window.__injections.push(injection);
 }
 
+const CHAR_NAME = 'Kisa';
+const USER_NAME = 'Kai';
+
+/** What SillyTavern's createRawPrompt() does to a raw prompt (script.js:3945). */
+export function substituteParamsLikeST(text) {
+    return String(text ?? '')
+        .replace(/\{\{char\}\}/gi, CHAR_NAME)
+        .replace(/\{\{user\}\}/gi, USER_NAME);
+}
+
+/** A model that ignores the token instruction: it writes the names it was given. */
+function modelish(text) {
+    return String(text ?? '')
+        .replace(/\[\[\s*char\s*\]\]/gi, CHAR_NAME)
+        .replace(/\[\[\s*user\s*\]\]/gi, USER_NAME);
+}
+
 const AUTHORED = [
     {
         label: 'Instinct before thought',
@@ -75,6 +92,9 @@ function authoredFor(prompt) {
 
 export async function generateRaw({ prompt = '', systemPrompt = '', responseLength = null } = {}) {
     window.__lastRawPrompt = prompt;
+    // ST resolves macros before the model sees anything — the harness has to do
+    // the same or it cannot reproduce the "rules came back with real names" bug.
+    window.__promptAsModelSeesIt = substituteParamsLikeST(prompt);
     window.__calls = (window.__calls ?? 0) + 1;
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -88,8 +108,19 @@ export async function generateRaw({ prompt = '', systemPrompt = '', responseLeng
         return 'Sure! Here are some lovely rules about love and trains.';
     }
 
-    // Fenced JSON: the parser has to survive the fence a model adds by itself.
-    return ['```json', '<<<RULES>>>', JSON.stringify(authoredFor(prompt)), '<<<END>>>', '```'].join('\n');
+    const rules = authoredFor(window.__promptAsModelSeesIt).map(rule => ({
+        ...rule,
+        text: modelish(rule.text),
+    }));
+
+    if (window.__cleanReply) {
+        // Fenced JSON: the parser has to survive the fence a model adds by itself.
+        return ['```json', '<<<RULES>>>', JSON.stringify(rules), '<<<END>>>', '```'].join('\n');
+    }
+
+    // The shape that broke it in the wild: names instead of tokens, no closing
+    // sentinel, a stray tool tag after the array.
+    return `<<<RULES>>>\n${JSON.stringify(rules)}\n</parameter>`;
 }
 
 export async function generateQuietPrompt({ quietPrompt = '' } = {}) {

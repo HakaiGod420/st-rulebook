@@ -399,7 +399,13 @@ async function runAi({ description, kind, count } = {}) {
                 : buildAuthorPrompt({ description: text, count: ai.count, category: ai.category });
 
         const raw = await callModel(prompt);
-        const parsed = parseRulesResponse(raw);
+        const context = getContext();
+        // Names let a model that ignored the token instruction still produce a
+        // portable rule: anything it writes as "Kisa" becomes {{char}} on the way in.
+        const parsed = parseRulesResponse(raw, {
+            charName: context.name2 || '',
+            userName: context.name1 || '',
+        });
 
         // Models over-produce. Asking for three and showing five reads as a bug.
         ai.candidates = parsed.slice(0, ai.count).map(candidate => ({ ...candidate, checked: true }));
